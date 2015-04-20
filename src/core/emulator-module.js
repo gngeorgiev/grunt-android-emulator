@@ -58,7 +58,7 @@ module.exports.AndroidEmulatorModule =
                     errors = [errors, ' sdcard: \'', sdcard, '\' '].join('');
                 }
             }
-            
+
             return errors;
         }
         return 'create: configuration is missing in Gruntfile';
@@ -68,7 +68,7 @@ module.exports.AndroidEmulatorModule =
         if (options)
         {
             var createEmulatorCmd = 'echo no | android create avd';
-            
+
             for (var id in options)
             {
                 var value = StringModule.trim(options[id]);
@@ -78,6 +78,7 @@ module.exports.AndroidEmulatorModule =
                     {
                         value = path.resolve(value);
                     }
+
                     createEmulatorCmd = [createEmulatorCmd, ' ', id, StringModule.trim(value) !== '' ? ' ' : '', value].join('');
                 }
             }
@@ -114,28 +115,67 @@ module.exports.AndroidEmulatorModule =
             }
 
             Logger.info(['AndroidEmulatorModule: start: ', startEmulatorCmd].join(''));
-            
+
             var startEmulator = shell.exec(startEmulatorCmd, function (statusCode, output) {
                 if (statusCode !== 0)
                 {
                     callbacks.error();
                 }
             });
-            
+
             Logger.info('AndroidEmulatorModule: start: wait to boot');
-            var waitEmulatorToBootCmd = [__dirname, '/', 'wait_emulator_to_boot.sh', ' ', options['-port']].join(''),
-                waitEmulatorToBootExec = shell.exec(waitEmulatorToBootCmd, function(code, output) {
-                    if (code === 0 && /successfully booted/.test(output))
-                    {
-                        Logger.info('AndroidEmulatorModule: start: emulator booted successfully');
-                        callbacks.success();
+
+            var port = options['-port'];
+
+            var trials = 0;
+            var failures = 0;
+            //TODO: add config
+            var maxTrials = 60;
+
+            var getEmulatorTestCommand = function () {
+                return 'adb -s emulator-' + port + ' shell getprop init.svc.bootanim';
+            }
+
+            while (true) {
+                Logger.line('## Trials:' + trials);
+                if (trials > maxTrials) {
+                    Logger.line('Could not boot emulator ' + port + ' after ' + trials + ' trials');
+                    break;
+                }
+
+                var testResult = shell.exec(getEmulatorTestCommand());
+                Logger.line(testResult);
+                if (testResult === 'not found') {
+                    failures++;
+                    Logger.line('## Not found:' + failures);
+                    if (failures > 10) {
+                        Logger.line('Could not boot emulator ' + port);
+                        break;
                     }
-                    else
-                    {
-                        Logger.error('AndroidEmulatorModule: start: emulator boot failed');
-                        callbacks.error();
-                    }
-                });
+                } else if (testResult === 'protocol fault') {
+                    Logger.line('Restarting adb server');
+                    shell.exec('adb kill-server');
+                    shell.exec('sleep 2');
+                    var start = shell.exec('adb start-server');
+                    Logger.line(start);
+                }
+
+                shell.exec('sleep 6');
+            }
+
+            //var waitEmulatorToBootCmd = [__dirname, '/', 'wait_emulator_to_boot.sh', ' ', options['-port']].join(''),
+            //    waitEmulatorToBootExec = shell.exec(waitEmulatorToBootCmd, function(code, output) {
+            //        if (code === 0 && /successfully booted/.test(output))
+            //        {
+            //            Logger.info('AndroidEmulatorModule: start: emulator booted successfully');
+            //            callbacks.success();
+            //        }
+            //        else
+            //        {
+            //            Logger.error('AndroidEmulatorModule: start: emulator boot failed');
+            //            callbacks.error();
+            //        }
+            //    });
         }
     },
     stop: function (options, callbacks)
@@ -145,7 +185,7 @@ module.exports.AndroidEmulatorModule =
             var stopEmulatorCmd = ['adb -s emulator-', options['-port'], ' emu kill'].join('');
 
             Logger.info(['AndroidEmulatorModule: stop: ', stopEmulatorCmd].join(''));
-            
+
             var stopEmulator = shell.exec(stopEmulatorCmd, function (statusCode, output) {
                 if (statusCode === 0 && !/error/.test(output))
                 {

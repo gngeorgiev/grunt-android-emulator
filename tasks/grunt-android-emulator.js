@@ -38,6 +38,7 @@ module.exports = function (grunt) {
             options = {},
             emulators = GruntModule.getOption('grunt_android_emulator.emulators');
 
+        console.log(emulators)
         if (!id || StringModule.trim(id) === '')
         {
             Logger.error(['task: create-android-emulator: invalid emulator id: ', id].join(''));
@@ -251,7 +252,7 @@ module.exports = function (grunt) {
             callbacks.error();
             return;
         }
-        else if (!emulators || emulators.length < 1)
+        else if (!emulators || !emulators.length)
         {
             Logger.error('task: unlock-android-emulator: emulator configuration is missing in Gruntfile');
             callbacks.error();

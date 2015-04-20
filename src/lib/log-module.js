@@ -14,20 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-var grunt = require('grunt'),
-    Logger = {
+var grunt = require('grunt');
+
+var Logger = {
         info: function (msg) {
-            if (msg)
-            {
+            if (msg) {
                 grunt.log.writeln(['[INFO]', ' ', msg].join(''));
             }
+
             return this;
         },
         error: function (msg) {
-            if (msg)
-            {
+            if (msg) {
                 grunt.log.error(['[ERROR]', ' ', msg].join(''));
             }
+
+            return this;
+        },
+        line: function (msg) {
+            if (msg) {
+                grunt.log.writeLn(msg);
+            }
+
             return this;
         }
     };
